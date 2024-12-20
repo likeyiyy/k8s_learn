@@ -1,32 +1,202 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>K8s Demo</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>K8s Demo App</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .section {
+            margin-bottom: 2rem;
+            padding: 1rem;
+            border: 1px solid #dee2e6;
+            border-radius: 0.25rem;
+        }
+    </style>
 </head>
 <body>
-    <h1>Kubernetes Demo</h1>
-    <div>
-        <h2>Redis Hits: <span id="hits">0</span></h2>
-        <button onclick="checkRedis()">Test Redis</button>
-    </div>
-    <div>
-        <h2>MySQL Status: <span id="mysql">Unknown</span></h2>
-        <button onclick="checkMySQL()">Test MySQL</button>
+    <div class="container mt-4">
+        <!-- Redis Section -->
+        <div class="section">
+            <h2>Redis Hit Counter</h2>
+            <div class="row g-3 align-items-center">
+                <div class="col-auto">
+                    <span id="hitCount" class="form-control-plaintext">Hits: 0</span>
+                </div>
+                <div class="col-auto">
+                    <button onclick="incrementHits()" class="btn btn-primary">Increment</button>
+                </div>
+                <div class="col-auto">
+                    <button onclick="resetHits()" class="btn btn-warning">Reset</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- MySQL Users Section -->
+        <div class="section">
+            <h2>User Management</h2>
+
+            <!-- Create User Form -->
+            <form id="createUserForm" class="mb-4">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <input type="text" class="form-control" id="userName" placeholder="Name" required>
+                    </div>
+                    <div class="col-md-4">
+                        <input type="email" class="form-control" id="userEmail" placeholder="Email" required>
+                    </div>
+                    <div class="col-md-4">
+                        <button type="submit" class="btn btn-success">Create User</button>
+                    </div>
+                </div>
+            </form>
+
+            <!-- Users Table -->
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="usersTableBody">
+                </tbody>
+            </table>
+        </div>
     </div>
 
+    <!-- Edit User Modal -->
+    <div class="modal fade" id="editUserModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit User</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editUserForm">
+                        <input type="hidden" id="editUserId">
+                        <div class="mb-3">
+                            <label class="form-label">Name</label>
+                            <input type="text" class="form-control" id="editUserName">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Email</label>
+                            <input type="email" class="form-control" id="editUserEmail">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" onclick="updateUser()">Save changes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-    async function checkRedis() {
-        const response = await fetch('/api/redis-test');
-        const data = await response.json();
-        document.getElementById('hits').textContent = data.hits;
-    }
+        const API_URL = '/api';  // Will be proxied by ingress
+        let editModal;
 
-    async function checkMySQL() {
-        const response = await fetch('/api/mysql-test');
-        const data = await response.json();
-        document.getElementById('mysql').textContent = 
-            data.mysql ? 'Connected' : 'Error';
-    }
+        // Initialize when document is ready
+        document.addEventListener('DOMContentLoaded', function() {
+            editModal = new bootstrap.Modal(document.getElementById('editUserModal'));
+            loadHits();
+            loadUsers();
+
+            // Set up form submission handler
+            document.getElementById('createUserForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                createUser();
+            });
+        });
+
+        // Redis functions
+        async function loadHits() {
+            const response = await fetch(`${API_URL}/redis/hits`);
+            const data = await response.json();
+            document.getElementById('hitCount').textContent = `Hits: ${data.hits}`;
+        }
+
+        async function incrementHits() {
+            await fetch(`${API_URL}/redis/hits/increment`, { method: 'POST' });
+            loadHits();
+        }
+
+        async function resetHits() {
+            await fetch(`${API_URL}/redis/hits/reset`, { method: 'POST' });
+            loadHits();
+        }
+
+        // User management functions
+        async function loadUsers() {
+            const response = await fetch(`${API_URL}/users/`);
+            const users = await response.json();
+            const tbody = document.getElementById('usersTableBody');
+            tbody.innerHTML = users.map(user => `
+                <tr>
+                    <td>${user.id}</td>
+                    <td>${user.name}</td>
+                    <td>${user.email}</td>
+                    <td>
+                        <button class="btn btn-sm btn-primary" onclick="openEditModal(${user.id}, '${user.name}', '${user.email}')">Edit</button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteUser(${user.id})">Delete</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        async function createUser() {
+            const name = document.getElementById('userName').value;
+            const email = document.getElementById('userEmail').value;
+
+            await fetch(`${API_URL}/users/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ name, email }),
+            });
+
+            document.getElementById('createUserForm').reset();
+            loadUsers();
+        }
+
+        function openEditModal(id, name, email) {
+            document.getElementById('editUserId').value = id;
+            document.getElementById('editUserName').value = name;
+            document.getElementById('editUserEmail').value = email;
+            editModal.show();
+        }
+
+        async function updateUser() {
+            const id = document.getElementById('editUserId').value;
+            const name = document.getElementById('editUserName').value;
+            const email = document.getElementById('editUserEmail').value;
+
+            await fetch(`${API_URL}/users/${id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ name, email }),
+            });
+
+            editModal.hide();
+            loadUsers();
+        }
+
+        async function deleteUser(id) {
+            if (confirm('Are you sure you want to delete this user?')) {
+                await fetch(`${API_URL}/users/${id}`, {
+                    method: 'DELETE',
+                });
+                loadUsers();
+            }
+        }
     </script>
 </body>
 </html>
