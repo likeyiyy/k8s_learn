@@ -24,7 +24,7 @@ push:
 # Patch the deployment with new image
 patch:
 	kubectl set image deployment/backend backend=$(IMAGE_NAME):$(VERSION) -n $(NAMESPACE)
-	kubectl rollout status deployment/backend -n $(NAMESPACE)
+	kubectl rollout restart deployment/backend -n $(NAMESPACE)
 
 # Quick patch: build and update deployment
 quick-patch: build push patch
