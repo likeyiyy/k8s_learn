@@ -21,8 +21,21 @@ redis_client = Redis(
 )
 
 # MySQL 连接
-DATABASE_URL = f"mysql://root:{os.getenv('MYSQL_ROOT_PASSWORD')}@{os.getenv('MYSQL_HOST', 'mysql')}/test"
-engine = create_engine(DATABASE_URL)
+DATABASE_URL = f"mysql://root:{os.getenv('MYSQL_ROOT_PASSWORD')}@{os.getenv('MYSQL_HOST', 'mysql')}"
+root_engine = create_engine(DATABASE_URL)
+
+# 创建数据库
+@app.on_event("startup")
+async def create_database():
+    try:
+        with root_engine.connect() as conn:
+            conn.execute("CREATE DATABASE IF NOT EXISTS test")
+            conn.execute("USE test")
+    except Exception as e:
+        print(f"Error creating database: {e}")
+
+# 连接到特定数据库
+engine = create_engine(f"{DATABASE_URL}/test")
 
 # 创建 users 表
 metadata = MetaData()
