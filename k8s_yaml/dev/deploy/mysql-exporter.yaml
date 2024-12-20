@@ -29,10 +29,10 @@ spec:
         - name: MYSQL_EXPORTER_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: mysql-exporter-secret
+              name: mysql-secret
               key: password
         - name: DATA_SOURCE_NAME
-          value: "exporter:$(MYSQL_EXPORTER_PASSWORD)@(mysql:3306)/"
+          value: "root:$(MYSQL_EXPORTER_PASSWORD)@(mysql:3306)/"
 ---
 apiVersion: v1
 kind: Service
