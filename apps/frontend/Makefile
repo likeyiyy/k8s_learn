@@ -1,5 +1,5 @@
 # Variables
-IMAGE_NAME = frontend
+IMAGE_NAME = localhost:5000/frontend
 VERSION ?= latest
 NAMESPACE = dev
 
@@ -16,17 +16,18 @@ build:
 	eval $$(minikube docker-env) && \
 	docker build -t $(IMAGE_NAME):$(VERSION) .
 
-# Push to Minikube's registry (not needed when using Minikube's Docker daemon)
+# Push to Minikube's registry
 push:
-	@echo "Skip pushing when using Minikube's Docker daemon"
+	eval $$(minikube docker-env) && \
+	docker push $(IMAGE_NAME):$(VERSION)
 
 # Patch the deployment with new image
 patch:
-	kubectl set image deployment/$(IMAGE_NAME) $(IMAGE_NAME)=$(IMAGE_NAME):$(VERSION) -n $(NAMESPACE)
-	kubectl rollout status deployment/$(IMAGE_NAME) -n $(NAMESPACE)
+	kubectl set image deployment/frontend frontend=$(IMAGE_NAME):$(VERSION) -n $(NAMESPACE)
+	kubectl rollout status deployment/frontend -n $(NAMESPACE)
 
 # Quick patch: build and update deployment
-quick-patch: build patch
+quick-patch: build push patch
 
 # Deploy all k8s resources
 deploy:
@@ -46,7 +47,7 @@ status:
 
 # Restart deployment
 restart:
-	kubectl rollout restart deployment/$(IMAGE_NAME) -n $(NAMESPACE)
+	kubectl rollout restart deployment/frontend -n $(NAMESPACE)
 
 # Version with current timestamp
 patch-timestamp:
