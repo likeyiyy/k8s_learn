@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: backend
-        image: localhost:5000/backend:v1
+        image: localhost:5000/backend:latest
         ports:
         - containerPort: 8000
         env:
