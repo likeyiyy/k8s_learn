@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>K8s Demo</title>
+</head>
+<body>
+    <h1>Kubernetes Demo</h1>
+    <div>
+        <h2>Redis Hits: <span id="hits">0</span></h2>
+        <button onclick="checkRedis()">Test Redis</button>
+    </div>
+    <div>
+        <h2>MySQL Status: <span id="mysql">Unknown</span></h2>
+        <button onclick="checkMySQL()">Test MySQL</button>
+    </div>
+
+    <script>
+    async function checkRedis() {
+        const response = await fetch('/api/redis-test');
+        const data = await response.json();
+        document.getElementById('hits').textContent = data.hits;
+    }
+
+    async function checkMySQL() {
+        const response = await fetch('/api/mysql-test');
+        const data = await response.json();
+        document.getElementById('mysql').textContent = 
+            data.mysql ? 'Connected' : 'Error';
+    }
+    </script>
+</body>
+</html>
